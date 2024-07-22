@@ -64,6 +64,9 @@
 </head>
 
 <body>
+    <% if(locals.message) { %>
+        <h1>Wlcome <%= message %></h1>
+        <% } %>
     <ul id="messages"></ul>
     <form id="form" action="/chat" method="POST">
         <input id="input" autocomplete="off" placeholder="message" />

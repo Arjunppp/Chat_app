@@ -1,6 +1,7 @@
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import cookieParser from 'cookie-parser';
 import mongoose from 'mongoose';
 import { User } from './models/userModel.js';
 import bcrypt from 'bcrypt';
@@ -12,9 +13,14 @@ const port = 5000;
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server); //this will handle the socket request
+app.use(cookieParser());
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+let cookies ='';
+
+app.set('view engine', 'ejs');
+app.set('views', path.join(path.resolve(), 'views'));
 
 app.use(express.static(path.resolve(__dirname, 'public')));
 app.use(express.json());
@@ -50,9 +56,47 @@ app.get('/signup', (req, res) => {
     res.sendFile(path.resolve(__dirname, 'public', 'html', 'signup.html'));
 });
 
-app.get('/chat', (req, res) => {
-    res.sendFile(path.resolve(__dirname, 'public', 'html', 'chat.html'));
+app.get('/chat', userAuth , (req,res) => {
+    let userData = req.user;
+    
+   res.render('chat' , {message : userData.tokenData.username});
 });
+
+function verifyUser(token)
+{
+    try{
+        let isMatch =  jwt.verify(token ,'CHATSECRETKEY');
+    return isMatch;
+    }
+    catch(err)
+    {
+        console.log(err);
+    }
+};
+
+async function userAuth(req, res, next) {
+
+    try {
+        let token = req.cookies?.userToken;
+       
+        if (!token) {
+            return res.redirect('/');
+        };
+        let userData = verifyUser(token);
+        
+        if (userData) {
+            req.user = userData;
+            next();
+        }
+        else {
+            res.redirect('/');
+        }
+    }
+    catch (err) {
+        console.log(err);
+    }
+
+}
 
 const authenticate = (socket, next) => {
     const token = socket.handshake.auth.token;
