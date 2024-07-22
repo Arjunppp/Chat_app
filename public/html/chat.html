@@ -25,7 +25,7 @@
             backdrop-filter: blur(10px);
         }
 
-        #input ,#username {
+        #input, #username {
             border: none;
             padding: 0 1rem;
             flex-grow: 1;
@@ -66,7 +66,7 @@
 <body>
     <ul id="messages"></ul>
     <form id="form" action="/chat" method="POST">
-        <input id="input" autocomplete="off" placeholder="message"/>
+        <input id="input" autocomplete="off" placeholder="message" />
         <input type="text" id="username" placeholder="username">
         <button>Send</button>
     </form>
@@ -77,45 +77,55 @@
             const ca = document.cookie.split(';');
             for (let i = 0; i < ca.length; i++) {
                 let c = ca[i];
-                while (c.charAt(0) == ' ') c = c.substring(1);
-                if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length, c.length);
+                while (c.charAt(0) === ' ') c = c.substring(1);
+                if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
             }
             return null;
         }
 
         function connectSocket() {
             const token = getCookie('userToken');
-            console.log(token);
+            console.log('Token:', token);
             if (!token) {
                 console.log('No token found');
-                return;
+                return null;
             }
 
             const socket = io('http://localhost:5000', {
                 auth: { token }
             });
 
-           return socket;
-        };
+            socket.on('connect_error', (err) => {
+                console.error('Connection error:', err);
+            });
 
-        const socket = connectSocket();
+            socket.on('connect', () => {
+                console.log('Connected to server');
+            });
 
-        socket.on('private message', (msg) => {
-            const item = document.createElement('li');
-            item.textContent = `${msg.sender}: ${msg.message}`;
-            document.getElementById('messages').appendChild(item);
+            socket.on('private message', (msg) => {
+                console.log('Received private message:', msg);
+                const item = document.createElement('li');
+                item.textContent = `${msg.sender}: ${msg.message}`;
+                document.getElementById('messages').appendChild(item);
+            });
+
+            return socket;
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const socket = connectSocket();
+
+            if (socket) {
+                document.getElementById('form').addEventListener('submit', (event) => {
+                    event.preventDefault();
+                    const message = document.getElementById('input').value;
+                    const recipient = document.getElementById('username').value;
+                    socket.emit('private message', { message, recipient });
+                    document.getElementById('input').value = '';
+                });
+            }
         });
-
-        document.getElementById('form').addEventListener('submit', (event) => {
-            event.preventDefault();
-            let message = document.getElementById('input').value;
-            const recipient = document.getElementById('username').value;
-            socket.emit('private message', { message, recipient });
-            document.getElementById('input').value = '';
-        });
-
-        document.addEventListener('DOMContentLoaded', connectSocket);
-
     </script>
 </body>
 
